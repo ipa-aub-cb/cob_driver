@@ -48,8 +48,8 @@ genericArmCtrl::genericArmCtrl(int DOF)
 	isMoving = false;
 
 	//TODO: make configurable
-	SetPTPvel(0.7);
-	SetPTPacc(0.4);
+	SetPTPvel(0.45);
+	SetPTPacc(0.3);
 
 	//m_P = 2.5;
 	m_P = 4.0;
