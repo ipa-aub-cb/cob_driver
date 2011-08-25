@@ -57,7 +57,7 @@ void CanESD::initIntern()
 	}
 */	
 	ret = 0;
-	int iCanNet = 0;
+	int iCanNet = 2;
 	//m_IniFile.GetKeyInt( "CanCtrl", "NetESD", &iCanNet, true);
 	
 	int iBaudrateVal = NTCAN_BAUD_250;

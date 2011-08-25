@@ -61,7 +61,9 @@ typedef unsigned char uint8_t;
 
 #include <cob_srvs/Trigger.h>
 
-#include <tf/transform_listener.h>
+//#include <tf/transform_listener.h>
+#include <tf/transform_broadcaster.h>
+
 #include <visualization_msgs/Marker.h>
 
 #include <math.h>
@@ -83,18 +85,21 @@ public:
   void updateFTData();
   void visualizeData(double x, double y, double z);
 
+  tf::TransformBroadcaster br;
+
+
 private:
   // declaration of topics to publish
   ros::Publisher topicPub_ForceData_;
-  ros::Publisher topicPub_ForceDataBase_;
+  //ros::Publisher topicPub_ForceDataBase_;
   ros::Publisher topicPub_Marker_;
 
   // service servers
   ros::ServiceServer srvServer_Init_;
   ros::ServiceServer srvServer_Calibrate_;
 
-  tf::TransformListener tflistener;
-  tf::StampedTransform transform_ee_base;
+  //tf::TransformListener tflistener;
+  //tf::StampedTransform transform_ee_base;
 
   bool m_isInitialized;
   ForceTorqueCtrl ftc;
@@ -105,8 +110,8 @@ private:
 bool ForceTorqueNode::init()
 {
   m_isInitialized = false;
-  topicPub_ForceData_ = nh_.advertise<std_msgs::Float32MultiArray>("force_values", 100);
-  topicPub_ForceDataBase_ = nh_.advertise<std_msgs::Float32MultiArray>("force_values_base", 100);
+  topicPub_ForceData_ = nh_.advertise<std_msgs::Float32MultiArray>("/arm_controller/wrench", 100);
+  //topicPub_ForceDataBase_ = nh_.advertise<std_msgs::Float32MultiArray>("/arm_controller/wrench_bl", 100);
   topicPub_Marker_ = nh_.advertise<visualization_msgs::Marker>("/visualization_marker", 1);
   srvServer_Init_ = nh_.advertiseService("Init", &ForceTorqueNode::srvCallback_Init, this);
   srvServer_Calibrate_ = nh_.advertiseService("Calibrate", &ForceTorqueNode::srvCallback_Calibrate, this);
@@ -120,17 +125,20 @@ bool ForceTorqueNode::srvCallback_Init(cob_srvs::Trigger::Request &req,
 {
   if(!m_isInitialized)
     {
-	ftc.SetFXGain(-1674.08485641479, 25.3936432491561, 3936.02718786968, -26695.2539299392, -3463.73728677908, 32320.8777656041);
+	/*ftc.SetFXGain(-1674.08485641479, 25.3936432491561, 3936.02718786968, -26695.2539299392, -3463.73728677908, 32320.8777656041);
 	ftc.SetFYGain(-4941.11252317989, 32269.5827812235, 1073.82949467087, -15541.8400780814, 3061.89541712948, -18995.9891819409);
 	ftc.SetFZGain(39553.9250733854, -501.940034213822, 40905.2545309848, 85.1095865539103, 38879.4015426067, 541.344775537753);
 	ftc.SetTXGain(-57.4775857386444, 225.941430274037, -638.238694389357, -116.780649376712, 645.133934885308, -116.310081348745 );
 	ftc.SetTYGain(786.70602313107, -4.36504382717595, -422.360387149734, 180.7428885668, -352.389412256677, -232.293941041101);
 	ftc.SetTZGain(60.1009854270179, -400.19573754971, 29.142908672741, -392.119024237625, 70.9306507180567, -478.104759057292);
-
-	ftc.SetCalibMatrix();
+	*/
+	//ftc.SetCalibMatrix();
 	ftc.Init();
 	ROS_INFO("FTC initialized");
-
+	ROS_INFO("Reading firmware version");
+	ftc.ReadFirmwareVersion();
+	ROS_INFO("Reading calibration matrix");
+	ftc.ReadCalibrationMatrix();
 	//set Calibdata to zero
 	F_avg.resize(6);
 	F_avg[0] = 0.0;
@@ -140,7 +148,7 @@ bool ForceTorqueNode::srvCallback_Init(cob_srvs::Trigger::Request &req,
 	F_avg[4] = 0.0;
 	F_avg[5] = 0.0;
 
-
+	res.success.data = true;
 	m_isInitialized = true;
     }
   return true;
@@ -192,17 +200,30 @@ void ForceTorqueNode::updateFTData()
       msg.data.push_back(Tx-F_avg[3]);
       msg.data.push_back(Ty-F_avg[4]);
       msg.data.push_back(Tz-F_avg[5]);
-
-
       topicPub_ForceData_.publish(msg);
       
-
+      /*		tf::Transform transform;
+      		transform.setOrigin( tf::Vector3(0, 0, -0.025) );
+      
+	 	transform.setRotation( tf::createQuaternionFromRPY(3.141592654,0,2.094395102));//30°
+	  
+			//transform.setRotation( tf::createQuaternionFromRPY(3.141592654,0,3.665191429));//30° falsch
+			//transform.setRotation( tf::createQuaternionFromRPY(3.141592654,0,5.235987756));//30° + 180° falsch
+			//transform.setRotation( tf::createQuaternionFromRPY(3.141592654,0,6.806784083));//30° + 360° falsch
+			//transform.setRotation( tf::Quaternion(0, 0, 0, 1) );
+			//45°	transform.setRotation( tf::createQuaternionFromRPY(3.141592654,0,0.785398163));
+			//45°falsch im rviz richtig nach dummylink	transform.setRotation( tf::createQuaternionFromRPY(3.141592654,0,3.926990817)); 
+			//test  transform.setRotation( tf::createQuaternionFromRPY(3.141592654,0,0.523598775)); 
+			//test transform.setRotation( tf::createQuaternionFromRPY(0,0,0));
+	  
+	  br.sendTransform(tf::StampedTransform(transform, ros::Time::now(), "arm_7_link", "ft_debug_link"));
       tf::Transform fdata_base;
       tf::Transform fdata;
-      fdata.setOrigin(tf::Vector3(Fx-F_avg[0], Fy-F_avg[1], Fz-F_avg[2]));
+      fdata.setOrigin(tf::Vector3(Fy-F_avg[1], Fx-F_avg[0], Fz-F_avg[2]));
 
       try{
-        tflistener.lookupTransform("arm_7_link", "base_link", ros::Time(0), transform_ee_base);
+        tflistener.lookupTransform("ft_debug_link", "dummy_link", ros::Time(0), transform_ee_base);
+
       }
       catch (tf::TransformException ex){
 	ROS_ERROR("%s",ex.what());
@@ -211,14 +232,17 @@ void ForceTorqueNode::updateFTData()
       fdata_base = transform_ee_base * fdata;
 
       std_msgs::Float32MultiArray base_msg;
-      base_msg.data.push_back(fdata_base.getOrigin().x());
       base_msg.data.push_back(fdata_base.getOrigin().y());
+      base_msg.data.push_back(fdata_base.getOrigin().x());
       base_msg.data.push_back(fdata_base.getOrigin().z());
       base_msg.data.push_back(0.0);
       base_msg.data.push_back(0.0);
       base_msg.data.push_back(0.0);
       topicPub_ForceDataBase_.publish(base_msg);
       visualizeData(fdata_base.getOrigin().x(), fdata_base.getOrigin().y(), fdata_base.getOrigin().z());
+      
+     */
+      
     }
 }
 

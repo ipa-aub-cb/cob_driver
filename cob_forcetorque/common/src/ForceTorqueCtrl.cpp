@@ -46,6 +46,7 @@ void ForceTorqueCtrl::ReadFTSerialNumber()
 				      << replyMsg.getAt(2) << " " << replyMsg.getAt(3) << " " 
 				      << replyMsg.getAt(4) << " " << replyMsg.getAt(5) << " " 
 				      << replyMsg.getAt(6) << " " << replyMsg.getAt(7) << std::endl;
+
 }
 
 void ForceTorqueCtrl::SetActiveCalibrationMatrix(int num)
@@ -259,7 +260,7 @@ void ForceTorqueCtrl::ReadSGData(double &Fx, double &Fy, double &Fz, double &Tx,
 		c[0] = replyMsg.getAt(0); //status code
 		c[1] = replyMsg.getAt(1);
 		//statusCode = (((char)c[0] << 8) | c[1]);
-		
+
 		c[0] = replyMsg.getAt(2); //sg0
 		c[1] = replyMsg.getAt(3);
 
@@ -268,11 +269,12 @@ void ForceTorqueCtrl::ReadSGData(double &Fx, double &Fy, double &Fz, double &Tx,
 
 		c[0] = replyMsg.getAt(4); //sg1
 		c[1] = replyMsg.getAt(5);
-		sg1 = (short)((c[0] << 8) | c[1]);
-
+			//sg1 = (short)((c[0] << 8) | c[1]);
+			sg2 = (short)((c[0] << 8) | c[1]);
 		c[0] = replyMsg.getAt(6); //sg2
 		c[1] = replyMsg.getAt(7);
-		sg2 = (short)((c[0] << 8) | c[1]);
+			//sg2 = (short)((c[0] << 8) | c[1]);
+			sg4 = (short)((c[0] << 8) | c[1]);
 	}
 	else
 		return;
@@ -284,15 +286,15 @@ void ForceTorqueCtrl::ReadSGData(double &Fx, double &Fy, double &Fz, double &Tx,
 
 		c[0] = replyMsg.getAt(0); //sg3
 		c[1] = replyMsg.getAt(1);
-		sg3 = (short)((c[0] << 8) | c[1]);
-
+			//sg3 = (short)((c[0] << 8) | c[1]);
+			sg1 = (short)((c[0] << 8) | c[1]);
 		c[0] = replyMsg.getAt(2); //sg4
 		c[1] = replyMsg.getAt(3);
-		sg4 = (short)((c[0] << 8) | c[1]);
-
+			//sg4 = (short)((c[0] << 8) | c[1]);
+			sg3 = (short)((c[0] << 8) | c[1]);
 		c[0] = replyMsg.getAt(4); //sg5
 		c[1] = replyMsg.getAt(5);
-		sg5 = (short)((c[0] << 8) | c[1]);
+			sg5 = (short)((c[0] << 8) | c[1]);
 	}
 	else
 		return;
@@ -492,7 +494,7 @@ void ForceTorqueCtrl::SetCalibMatrix()
 	tmp[34] = m_v3TZGain[4];
 	tmp[35] = m_v3TZGain[5];
 
-	
+	std::cout << tmp.transpose() << "\n";
 	m_mXCalibMatrix = tmp.transpose();
 			
 }
