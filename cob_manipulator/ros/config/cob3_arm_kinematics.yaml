@@ -3,15 +3,16 @@ kinematics_solver: cob3_arm_kinematics/IKFastKinematicsPlugin
 
 arm:
     tip_name: arm_7_link
-    root_name: base_link
+    root_name: arm_0_link
+    robot: arm_sdh
 
-use_collision_map: false
-collision_map_safety_timeout: 10000.0
-joint_states_safety_timeout: 1.0
-tf_safety_timeout: 10.0
-default_robot_padding: 0.02
-link_padding:
-  - link: arm 
-    padding: .02
-  - link: tablet
-    padding: 0.03
+#use_collision_map: false
+#collision_map_safety_timeout: 10000.0
+#joint_states_safety_timeout: 1.0
+#tf_safety_timeout: 10.0
+#default_robot_padding: 0.02
+#link_padding:
+#  - link: arm 
+#    padding: .02
+#  - link: tablet
+#    padding: 0.03

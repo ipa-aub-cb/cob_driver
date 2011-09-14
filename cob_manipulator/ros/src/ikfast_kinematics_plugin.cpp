@@ -23,8 +23,10 @@ namespace cob3_arm_kinematics
 class ik_solver_base{
 public:
     virtual int solve(KDL::Frame &pose_frame, const std::vector<double> &ik_seed_state) = 0;
+    virtual int solve(const double rot[],const double trans[]) = 0;
     virtual void getSolution(int i, std::vector<double> &solution) = 0;
     virtual void getClosestSolution(const std::vector<double> &ik_seed_state, std::vector<double> &solution) = 0;
+    virtual void getAll()=0;
 };
 
 template <class  T> class ikfast_solver: public ik_solver_base{
@@ -38,6 +40,12 @@ public:
       
       return solutions.size();
     }
+    virtual int solve(const double rot[9],const double trans[]){
+	double vfree[1] = {0};
+      ik(trans, rot, &vfree[0], solutions);
+      return solutions.size();
+    }
+
     virtual void getSolution(int i, std::vector<double> &solution){
       solution.clear();
       std::vector<IKReal> vsolfree(solutions[i].GetFree().size());
@@ -49,7 +57,7 @@ public:
 	  std::cout << " " << solution[j];
       std::cout << std::endl;
 	  
-      //ROS_ERROR("%f %d",solution[2],vsolfree.size());
+      ROS_ERROR("%f %d",solution[2],vsolfree.size());
     }
     virtual void getClosestSolution(const std::vector<double> &ik_seed_state, std::vector<double> &solution){
       double mindist = 0;
@@ -69,7 +77,12 @@ public:
       }
       if(minindex >= 0) getSolution(minindex,solution);
     }
-    
+    virtual void getAll(){
+      std::vector<double> sol;
+      for(size_t i=0;i<solutions.size();++i){
+	  getSolution(i,sol);
+      }
+    }
     
     
 private:
@@ -79,10 +92,12 @@ private:
 };
 
 
-namespace cob3_2{
-#include "ikfast_cob3_2.cpp"
+//namespace cob3_2{
+//#include "ikfast_cob3_2.cpp"
+//}
+namespace arm_sdh{
+#include "ikfast_arm_sdh.cpp"
 }
-
 class IKFastKinematicsPlugin : public kinematics::KinematicsBase
 {
   std::vector<std::string> joints;
@@ -111,15 +126,28 @@ public:
       std::string robot;
       node_handle.param("robot",robot,std::string());
       
-      if(robot == "cob3-2"){
+      /*if(robot == "cob3-2"){
 	fillFreeParams(cob3_2::getNumFreeParameters(),cob3_2::getFreeParameters());
 	numJoints = cob3_2::getNumJoints();
 	ik_solver = new ikfast_solver<cob3_2::IKSolution>(cob3_2::ik, numJoints);
+      }else */if(robot == "arm_sdh"){
+	fillFreeParams(arm_sdh::getNumFreeParameters(),arm_sdh::getFreeParameters());
+	numJoints = arm_sdh::getNumJoints();
+	ik_solver = new ikfast_solver<arm_sdh::IKSolution>(arm_sdh::ik, numJoints);
       }else{
 	ROS_FATAL("Robot '%s' unknown!",robot.c_str());
 	return false;
       }
       
+	double er[9],et[3];
+	double tj[7]={0,0,0,0,0,0,0};
+	arm_sdh::fk(tj,et,er);
+      ROS_WARN("fk %f %f %f",et[0],et[1],et[2]);
+	ik_solver->solve(er,et);
+	ik_solver->getAll();
+
+      ROS_FATAL("Robot is '%s'!",robot.c_str());
+
       if(freeParams.size()>1){
 	ROS_FATAL("Only one free joint paramter supported!");
 	return false;
@@ -172,8 +200,10 @@ public:
       {
 	link2index.insert(std::make_pair(kdl_chain.getSegment(i).getName(),i));
 	links.push_back(kdl_chain.getSegment(i).getName());
-	if(links.size()>1){
+	if(links.size()>0){
 	  joints.push_back(kdl_chain.getSegment(i).getJoint().getName());
+	  jointMin.push_back(-3);
+	  jointMax.push_back(3);
 	  ROS_ERROR("Joint %s",joints.back().c_str());
 
 	}
@@ -238,9 +268,13 @@ public:
 	ros::Time maxTime = ros::Time::now() + ros::Duration(timeout);
 	const double increment = 0.01; //TODO: make it a plugin parameter
 	int counter = 0;
+	double start_value = ik_seed_state[freeParams[0]];
 
+	ROS_ERROR("got pose %f %f %f, %f %f %f %f",ik_pose.position.x,ik_pose.position.y,ik_pose.position.z,ik_pose.orientation.x,ik_pose.orientation.y,ik_pose.orientation.z,ik_pose.orientation.w);
 	while (ros::Time::now() < maxTime){
-	    vfree[0] = ik_seed_state[freeParams[0]] + increment*counter;
+//  	    ROS_ERROR("before");
+	    vfree[0] = start_value + increment*counter;
+//  	    ROS_ERROR("after");
 
 	    int numsol = ik_solver->solve(frame,vfree);
 	    
@@ -257,8 +291,9 @@ public:
 		return false;
 	      }
 	      counter = counter > 0? - counter: counter + 1;
+	      vfree[0] = start_value + increment*counter;
 	      ++i;
-	    }while( counter *  increment < jointMin[freeParams[0]] ||  counter *  increment > jointMax[freeParams[0]] );
+	    }while( vfree[0] < jointMin[freeParams[0]] ||  vfree[0] > jointMax[freeParams[0]] );
 	     
 	}
 	error_code = kinematics::NO_IK_SOLUTION; 
