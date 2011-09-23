@@ -56,7 +56,8 @@ typedef unsigned char uint8_t;
 #include <inttypes.h>
 #include <iostream>
 #include <ros/ros.h>
-#include <std_msgs/Float32MultiArray.h>
+//#include <std_msgs/Float32MultiArray.h>
+#include <geometry_msgs/WrenchStamped.h>
 #include <cob_forcetorque/ForceTorqueCtrl.h>
 
 #include <cob_srvs/Trigger.h>
@@ -107,10 +108,12 @@ private:
   
 };
 
+
 bool ForceTorqueNode::init()
 {
   m_isInitialized = false;
-  topicPub_ForceData_ = nh_.advertise<std_msgs::Float32MultiArray>("/arm_controller/wrench", 100);
+  //topicPub_ForceData_ = nh_.advertise<std_msgs::Float32MultiArray>("/arm_controller/wrench", 100);
+  topicPub_ForceData_ = nh_.advertise<geometry_msgs::WrenchStamped>("/arm_controller/wrench", 100);
   //topicPub_ForceDataBase_ = nh_.advertise<std_msgs::Float32MultiArray>("/arm_controller/wrench_bl", 100);
   topicPub_Marker_ = nh_.advertise<visualization_msgs::Marker>("/visualization_marker", 1);
   srvServer_Init_ = nh_.advertiseService("Init", &ForceTorqueNode::srvCallback_Init, this);
@@ -193,13 +196,13 @@ void ForceTorqueNode::updateFTData()
       double Fx, Fy, Fz, Tx, Ty, Tz = 0;
       
       ftc.ReadSGData(Fx, Fy, Fz, Tx, Ty, Tz);
-      std_msgs::Float32MultiArray msg;
-      msg.data.push_back(Fx-F_avg[0]);
-      msg.data.push_back(Fy-F_avg[1]);
-      msg.data.push_back(Fz-F_avg[2]);
-      msg.data.push_back(Tx-F_avg[3]);
-      msg.data.push_back(Ty-F_avg[4]);
-      msg.data.push_back(Tz-F_avg[5]);
+      geometry_msgs::WrenchStamped msg;
+      msg.wrench.force.x = Fx-F_avg[0]; //data.push_back(Fx-F_avg[0]);
+      msg.wrench.force.y = Fy-F_avg[1]; //data.push_back(Fy-F_avg[1]);
+      msg.wrench.force.z = Fz-F_avg[2]; //data.push_back(Fz-F_avg[2]);
+      msg.wrench.torque.x = Tx-F_avg[3]; //data.push_back(Tx-F_avg[3]);
+      msg.wrench.torque.y = Ty-F_avg[4]; //data.push_back(Ty-F_avg[4]);
+      msg.wrench.torque.z = Tz-F_avg[5]; //data.push_back(Tz-F_avg[5]);
       topicPub_ForceData_.publish(msg);
       
       /*		tf::Transform transform;

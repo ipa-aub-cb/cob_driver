@@ -13,7 +13,7 @@
 	<include file="$(find cob_arm)/ros/launch/arm.launch" />
 
 	<!-- kinematics -->
-	<include file="$(find cob_manipulator)/ros/launch/cob3_arm_kinematics_sim.launch" />
+	<!--<include file="$(find cob_manipulator)/ros/launch/cob3_arm_kinematics_sim.launch" />-->
 
 	<!-- start additional packages -->
 	<include file="$(find cob_joint_state_aggregator)/ros/launch/joint_state_aggregator.launch" />

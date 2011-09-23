@@ -30,10 +30,10 @@ rosbuild_gensrv()
 #target_link_libraries(${PROJECT_NAME} another_library)
 #rosbuild_add_boost_directories()
 #rosbuild_link_boost(${PROJECT_NAME} thread)
-rosbuild_add_executable(cob_ik_solver_kdl ros/src/ik_solver_kdl.cpp)
+#rosbuild_add_executable(cob_ik_solver_kdl ros/src/ik_solver_kdl.cpp)
 #rosbuild_add_executable(create_robot_manip_dae ros/src/create_robot_manip_dae.cpp)
 
-rosbuild_add_library(cob3_arm_kinematics
-  ros/src/ikfast_kinematics_plugin.cpp
-)
+#rosbuild_add_library(cob3_arm_kinematics
+#  ros/src/ikfast_kinematics_plugin.cpp
+#)
 #target_link_libraries(example ${PROJECT_NAME})
