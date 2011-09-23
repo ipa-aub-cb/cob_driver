@@ -102,15 +102,15 @@ public:
         controller_state_ = n_.subscribe("state", 1, &cob_trajectory_controller::state_callback, this);
 	operation_mode_ = n_.subscribe("current_operationmode", 1, &cob_trajectory_controller::operationmode_callback, this);
 		srvServer_Stop_ = n_.advertiseService("stop", &cob_trajectory_controller::srvCallback_Stop, this);
-		srvClient_SetOperationMode = n_.serviceClient<cob_srvs::SetOperationMode>("set_operation_mode");
+		/*srvClient_SetOperationMode = n_.serviceClient<cob_srvs::SetOperationMode>("set_operation_mode");
 		while(!srvClient_SetOperationMode.exists())
 		  {
 		    ROS_INFO("Waiting for operationmode service to become available");
 		      sleep(1);
-		  }
+		  }*/
         executing_ = false;
 	watchdog_counter = 0;
-	current_operation_mode_ = "undefined";
+	current_operation_mode_ = "velocity";
 		q_current.resize(7);
 		traj_generator_ = new genericArmCtrl(7);
 		//TODO here set velocities and accelerations from parameter server
@@ -147,9 +147,9 @@ public:
         if(!executing_)
         {
 	  //set arm to velocity mode
-	  cob_srvs::SetOperationMode opmode;
+	  /*cob_srvs::SetOperationMode opmode;
 	  opmode.request.operation_mode.data = "velocity";
-	  srvClient_SetOperationMode.call(opmode);
+	  srvClient_SetOperationMode.call(opmode);*/
 	  while(current_operation_mode_ != "velocity")
 	    {
 	      ROS_INFO("waiting for arm to go to velocity mode");
