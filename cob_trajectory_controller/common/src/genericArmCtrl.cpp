@@ -1,9 +1,75 @@
-#include <cob_trajectory_controller/genericArmCtrl.h>
+/*!
+ *****************************************************************
+ * \file
+ *
+ * \note
+ *   Copyright (c) 2011 \n
+ *   Fraunhofer Institute for Manufacturing Engineering
+ *   and Automation (IPA) \n\n
+ *
+ *****************************************************************
+ *
+ * \note
+ *   Project name: care-o-bot
+ * \note
+ *   ROS stack name: cob_driver
+ * \note
+ *   ROS package name: cob_trajectory_controller
+ *
+ * \author
+ *   Author: Alexander Bubeck, email:alexander.bubeck@ipa.fhg.de
+ * \author
+ *   Supervised by: Alexander Bubeck, email:alexander.bubeck@ipa.fhg.de
+ *
+ * \date Date of creation: March 2011
+ *
+ * \brief
+ *   Implementation of ROS node for powercube_chain.
+ *
+ *****************************************************************
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are met:
+ *
+ *     - Redistributions of source code must retain the above copyright
+ *       notice, this list of conditions and the following disclaimer. \n
+ *     - Redistributions in binary form must reproduce the above copyright
+ *       notice, this list of conditions and the following disclaimer in the
+ *       documentation and/or other materials provided with the distribution. \n
+ *     - Neither the name of the Fraunhofer Institute for Manufacturing
+ *       Engineering and Automation (IPA) nor the names of its
+ *       contributors may be used to endorse or promote products derived from
+ *       this software without specific prior written permission. \n
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License LGPL as
+ * published by the Free Software Foundation, either version 3 of the
+ * License, or (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU Lesser General Public License LGPL for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public
+ * License LGPL along with this program.
+ * If not, see <http://www.gnu.org/licenses/>.
+ *
+ ****************************************************************/
+
+//##################
+//#### includes ####
+//##################
+
+// standard includes
 #include <fstream>
+
+// own includes
+#include <cob_trajectory_controller/genericArmCtrl.h>
 #include <cob_trajectory_controller/RefValJS_PTP_Trajectory.h>
 #include <cob_trajectory_controller/RefValJS_PTP.h>
 
-
+//ToDo: Check these macros below if still needed
 /********************************************************************
  *          Some macros for error checking and handling             *
  ********************************************************************/
@@ -42,25 +108,20 @@ genericArmCtrl::genericArmCtrl(int DOF)
 {
 	
 	m_DOF = DOF;
-	
 	m_pRefVals = NULL;
-	
 	isMoving = false;
 
 	//TODO: make configurable
-	//SetPTPvel(0.45);
-	//SetPTPacc(0.2);
 	SetPTPvel(0.45);
 	SetPTPacc(0.2);
 
-	//m_P = 2.5;
-	m_P = 4.0;
+	m_P = 4.0; //2.5;
 	m_Vorsteuer = 0.9;
-	m_AllowedError = 0.75;//0.5;//0.25; // rad
+	m_AllowedError = 0.75; //0.5;//0.25; // rad
 	m_CurrentError = 0.0; // rad
 	m_TargetError = 0.02; // rad;
 
-	m_ExtraTime = 3;	// s
+	m_ExtraTime = 3; // s
 	
 }
 
