@@ -58,9 +58,28 @@
  ****************************************************************/
 
 #include <cob_powercube_chain/PowerCubeCtrl.h>
+//FOR DEBUG
+#include <ros/ros.h>
+#include <urdf/model.h>
+#include <sensor_msgs/JointState.h>
+#include <trajectory_msgs/JointTrajectory.h>
+#include <pr2_controllers_msgs/JointTrajectoryControllerState.h>
+#include <diagnostic_updater/diagnostic_updater.h>
+#include <brics_actuator/JointPositions.h>
+#include <brics_actuator/JointVelocities.h>
+
+// ROS service includes
+#include <cob_srvs/Trigger.h>
+
+//DEBUG
+bool m_control_bool = true;
+float m_control_positions[6];
+ros::Time last_time_pub_;
+int countr = 0;
+
 
 #define PCTRL_CHECK_INITIALIZED() \
-if ( isInitialized()==false )													\
+if ( isInitialized()==false )											\
 {																		\
     m_ErrorMessage.assign("Manipulator not initialized.");              \
 	return false;														\
@@ -75,7 +94,7 @@ PowerCubeCtrl::PowerCubeCtrl(PowerCubeCtrlParams * params)
 
   m_params = params;
 
-  m_horizon = 0.025; // sec
+  m_horizon = 0.01; // sec
 
     }
 
@@ -106,6 +125,7 @@ bool PowerCubeCtrl::Init(PowerCubeCtrlParams * params)
   std::vector<double> LowerLimits = m_params->GetLowerLimits();
   std::vector<double> UpperLimits = m_params->GetUpperLimits();
 
+  std::cout << " D  O  F  :" << DOF << std::endl;
   m_status.resize(DOF);
   m_dios.resize(DOF);
   m_positions.resize(DOF);
@@ -431,28 +451,64 @@ bool PowerCubeCtrl::MoveVel(const std::vector<double>& velocities)
     }
     return false;
   }
+  //#############################################
+  //############  D  E  B  U  G  ################
+  //#############################################
+  
+  //Init
+  double delta_t;
+  
+  //Berechne delta_t
+  delta_t = ros::Time::now().toSec() - last_time_pub_.toSec(); 
+  
+  //Display Timegap with time before and after update
+  std::cout << "\n-------\nTimegap\n-------\n time now = " << ros::Time::now() << "\n last time = " << last_time_pub_ << "\n difference = " << delta_t << std::endl;
+				
+  last_time_pub_ = ros::Time::now(); 
 
-  //std::cout <<"vels = ";
-  for (unsigned int i = 0; i < DOF; i++)
+  for (unsigned int i = 0; i < DOF; i++) //vorher i < DOF
   {
+	std::cout << "\n##### New Loop No. " << i << " #####" << std::endl;   
     float pos;
     float cmd_pos;
+    float cmd_pos_abs; // absolute position
     unsigned short cmd_time; // time in milliseconds
-
-    // calculate horizon
-    cmd_time = getHorizon() * 1000; // time in milliseconds
-    cmd_pos = cmd_time/1000 * velocities[i];
-	//std::cout << "horizon = " << getHorizon() << " pos = " << cmd_pos << " time = " << cmd_time << " vel = " << cmd_pos/cmd_time << std::endl;
-    //std::cout << velocities[i] << " ";
+    
+    
+	if (countr == 0)
+	{
+		cmd_time = 17; //* getHorizon(); // time in milliseconds
+		if (i == DOF-1)
+			countr = countr + 1;
+	}
+	else
+	{
+		cmd_time = delta_t * 1000;
+	}
+	
+		
+  
+	std::cout << "\n---------------\nCalculated Time\n---------------\n cmd_time = " << cmd_time << std::endl;
+		
+    cmd_pos = (cmd_time/1000.0) * velocities[i];
+    
+	std::cout << "\n------------------\nCalculated Position\n------------------\n calculated delta_pos = " << cmd_pos << "\n new absolute pos = " << m_control_positions[i] << "\n used velocity = " << velocities[i] << std::endl;
     pthread_mutex_lock(&m_mutex);
     //std::cout << "------------------------------> PCube_moveVelExtended()" << std::endl;
-    PCube_moveVelExtended(m_DeviceHandle, m_params->GetModuleID(i), velocities[i], &m_status[i], &m_dios[i], &pos);
+    //PCube_moveVelExtended(m_DeviceHandle, m_params->GetModuleID(i), velocities[i], &m_status[i], &m_dios[i], &pos);
     //PCube_moveStepExtended(m_DeviceHandle, m_params->GetModuleID(i), 0.1, 1000, &m_status[i], &m_dios[i], &pos);
-    //PCube_moveStep(m_DeviceHandle, m_params->GetModuleID(i), 1000, 0.001);
+    //PCube_moveStep(m_DeviceHandle, m_params->GetModuleID(i), 0.0, 5*1000);
+	//PCube_moveStepExtended(m_DeviceHandle, m_params->GetModuleID(i), m_control_positions[i], 250000, &m_status[i], &m_dios[i], &pos);
+	PCube_moveStepExtended(m_DeviceHandle, m_params->GetModuleID(i), m_positions[i] + cmd_pos, cmd_time, &m_status[i], &m_dios[i], &pos);
+
     pthread_mutex_unlock(&m_mutex);
-    m_positions[i] = (double)pos;
+    
+	m_positions[i] = (double)pos;
+    if(i == DOF-2)
+		std::cout <<"no. " << i << "\nposition: " << m_positions[i] << "\ncontorl-position: " << m_control_positions[i] << std::endl;
   }
   //std::cout << std::endl;
+  //DEBUG
 
   pthread_mutex_lock(&m_mutex);
   //std::cout << "------------------------------> PCube_startMotionAll()" << std::endl;
@@ -460,6 +516,7 @@ bool PowerCubeCtrl::MoveVel(const std::vector<double>& velocities)
   pthread_mutex_unlock(&m_mutex);
 
   return true;
+  
 }
 
 /// @brief Stops the manipulator immediately
@@ -694,6 +751,9 @@ bool PowerCubeCtrl::updateStates()
     m_status[i] = state;
     m_dios[i] = dio;
     m_positions[i] = position;
+	m_control_positions[i] = position;
+
+    
     // @todo calculate vel and acc
     //m_velocities = ???;
     //m_accelerations = ???

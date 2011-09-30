@@ -116,8 +116,8 @@ bool ForceTorqueNode::init()
   topicPub_ForceData_ = nh_.advertise<geometry_msgs::WrenchStamped>("/arm_controller/wrench", 100);
   //topicPub_ForceDataBase_ = nh_.advertise<std_msgs::Float32MultiArray>("/arm_controller/wrench_bl", 100);
   topicPub_Marker_ = nh_.advertise<visualization_msgs::Marker>("/visualization_marker", 1);
-  srvServer_Init_ = nh_.advertiseService("Init", &ForceTorqueNode::srvCallback_Init, this);
-  srvServer_Calibrate_ = nh_.advertiseService("Calibrate", &ForceTorqueNode::srvCallback_Calibrate, this);
+  srvServer_Init_ = nh_.advertiseService("/cob_forcetorque/init", &ForceTorqueNode::srvCallback_Init, this);
+  srvServer_Calibrate_ = nh_.advertiseService("/cob_forcetorque/calibrate", &ForceTorqueNode::srvCallback_Calibrate, this);
 
   
   return true;
