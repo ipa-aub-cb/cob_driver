@@ -46,7 +46,6 @@ void ForceTorqueCtrl::ReadFTSerialNumber()
 				      << replyMsg.getAt(2) << " " << replyMsg.getAt(3) << " " 
 				      << replyMsg.getAt(4) << " " << replyMsg.getAt(5) << " " 
 				      << replyMsg.getAt(6) << " " << replyMsg.getAt(7) << std::endl;
-
 }
 
 void ForceTorqueCtrl::SetActiveCalibrationMatrix(int num)
@@ -100,6 +99,7 @@ void ForceTorqueCtrl::ReadCalibrationMatrix()
 	ReadMatrix(3, vCoef);
 	m_v3TXGain = vCoef;
 
+	//Read Ty coefficients
 	ReadMatrix(4, vCoef);
 	m_v3TYGain = vCoef;
 
@@ -241,7 +241,7 @@ void ForceTorqueCtrl::ReadFirmwareVersion()
 
 void ForceTorqueCtrl::ReadSGData(double &Fx, double &Fy, double &Fz, double &Tx, double &Ty, double &Tz)
 {
-	int statusCode, sg0 = 0, sg1 = 0, sg2 = 0, sg3 = 0, sg4 = 0, sg5 = 0;
+	int statusCode = 0, sg0 = 0, sg1 = 0, sg2 = 0, sg3 = 0, sg4 = 0, sg5 = 0;
 
 	CanMsg CMsg;
 	CMsg.setID(0x200);
@@ -258,33 +258,25 @@ void ForceTorqueCtrl::ReadSGData(double &Fx, double &Fy, double &Fz, double &Tx,
 
 		c[0] = replyMsg.getAt(0); //status code
 		c[1] = replyMsg.getAt(1);
-		statusCode = (((char)c[0] << 8) | c[1]);
-		//if (statusCode < 16)
-		//std::cout<<"status: "<<statusCode<<std::endl;
-
+		//statusCode = (((char)c[0] << 8) | c[1]);
+		
 		c[0] = replyMsg.getAt(2); //sg0
 		c[1] = replyMsg.getAt(3);
 
 		//sg0 = (((char)c[0] << 8) | c[1]);
-			sg0 = (short)((c[0] << 8) | c[1]);
-		//std::cout<<"SG0: "<<sg0<<std::endl;
+		sg0 = (short)((c[0] << 8) | c[1]);
 
 		c[0] = replyMsg.getAt(4); //sg1
 		c[1] = replyMsg.getAt(5);
-			//sg1 = (short)((c[0] << 8) | c[1]);
-			sg2 = (short)((c[0] << 8) | c[1]);
-			//std::cout<<"SG2: "<<sg2<<std::endl;
+		sg1 = (short)((c[0] << 8) | c[1]);
+
 		c[0] = replyMsg.getAt(6); //sg2
 		c[1] = replyMsg.getAt(7);
-			//sg2 = (short)((c[0] << 8) | c[1]);
-			sg4 = (short)((c[0] << 8) | c[1]);
-			//std::cout<<"SG4: "<<sg4<<std::endl;
+		sg2 = (short)((c[0] << 8) | c[1]);
 	}
 	else
 		return;
-	//CMsg.setID(0x201);
-	//CMsg.setLength(0);
-	//ret = m_Can->transmitMsg(CMsg, true);
+
 	ret2 = m_Can->receiveMsg(&replyMsg);
 	if(ret2)
 	{
@@ -292,56 +284,28 @@ void ForceTorqueCtrl::ReadSGData(double &Fx, double &Fy, double &Fz, double &Tx,
 
 		c[0] = replyMsg.getAt(0); //sg3
 		c[1] = replyMsg.getAt(1);
-			//sg3 = (short)((c[0] << 8) | c[1]);
-			sg1 = (short)((c[0] << 8) | c[1]);
-			//std::cout<<"SG1: "<<sg1<<std::endl;
+		sg3 = (short)((c[0] << 8) | c[1]);
+
 		c[0] = replyMsg.getAt(2); //sg4
 		c[1] = replyMsg.getAt(3);
-			//sg4 = (short)((c[0] << 8) | c[1]);
-			sg3 = (short)((c[0] << 8) | c[1]);
-			//std::cout<<"SG3: "<<sg3<<std::endl;
+		sg4 = (short)((c[0] << 8) | c[1]);
+
 		c[0] = replyMsg.getAt(4); //sg5
 		c[1] = replyMsg.getAt(5);
-			sg5 = (short)((c[0] << 8) | c[1]);
-			//std::cout<<"SG5: "<<sg5<<std::endl;
+		sg5 = (short)((c[0] << 8) | c[1]);
 	}
 	else
 		return;
 
-	std::cout<<"\nsg0: "<<sg0<<" sg1: "<<sg1<<" sg2: "<<sg2<<" sg3: "<<sg3<<" sg4: "<<sg4<<" sg5: "<<sg5<<std::endl;
+
+	//std::cout<<"\nsg0: "<<sg0<<" sg1: "<<sg1<<" sg2: "<<sg2<<" sg3: "<<sg3<<" sg4: "<<sg4<<" sg5: "<<sg5<<std::endl;
 	//out<<"sg0: "<<sg0<<" sg1: "<<sg1<<" sg2: "<<sg2<<" sg3: "<<sg3<<" sg4: "<<sg4<<" sg5: "<<sg5<<std::endl;
 	
 	StrainGaugeToForce(sg0, sg1, sg2, sg3, sg4, sg5);
 	
-	Fx = m_vForceData(0); Fy = m_vForceData(1);	Fz = m_vForceData(2); 	
-	Tx = m_vForceData(3); Ty = m_vForceData(4); Tz = m_vForceData(5);
-	//std::cout<<"Fx: "<<Fx<<" Fy: "<<Fy<<" Fz: "<<Fz<<" Tx: "<<Tx<<" Ty: "<<Ty<<" Tz: "<<Tz<<std::endl;
-	if (sg0 == 32767)
-	std::cout<<"\n ERROR in SG0: reached maximum "<<std::endl;
-	if (sg1 == 32767)
-	std::cout<<"\n ERROR in SG1: reached maximum "<<std::endl;
-	if (sg2 == 32767)
-	std::cout<<"\n ERROR in SG2: reached maximum "<<std::endl;
-	if (sg3 == 32767)
-	std::cout<<"\n ERROR in SG3: reached maximum "<<std::endl;
-	if (sg4 == 32767)
-	std::cout<<"\n ERROR in SG4: reached maximum "<<std::endl;
-	if (sg5 == 32767)
-	std::cout<<"\n ERROR in SG5: reached maximum "<<std::endl;
-	
-	if (sg0 == -32768)
-	std::cout<<"\n ERROR in SG0: reached minimum "<<std::endl;
-	if (sg1 == -32768)
-	std::cout<<"\n ERROR in SG1: reached minimum "<<std::endl;
-	if (sg2 == -32768)
-	std::cout<<"\n ERROR in SG2: reached minimum "<<std::endl;
-	if (sg3 == -32768)
-	std::cout<<"\n ERROR in SG3: reached minimum "<<std::endl;
-	if (sg4 == -32768)
-	std::cout<<"\n ERROR in SG4: reached minimum "<<std::endl;
-	if (sg5 == -32768)
-	std::cout<<"\n ERROR in SG5: reached minimum "<<std::endl;
-	
+	Fx = m_vForceData[0]; Fy = m_vForceData[1]; Fz = m_vForceData[2]; 
+	Tx = m_vForceData[3]; Ty= m_vForceData[4]; Tz = m_vForceData[5];
+	//out<<"Fx: "<<Fx<<" Fy: "<<Fy<<" Fz: "<<Fz<<" Tx: "<<Tx<<" Ty: "<<Ty<<" Tz: "<<Tz<<std::endl;
 	
 }
 
@@ -352,20 +316,18 @@ void ForceTorqueCtrl::StrainGaugeToForce(int& sg0, int& sg1, int& sg2, int& sg3,
 	Eigen::VectorXf test(6);
 	
 	v6SG[0] = sg0; v6SG[1] = sg1; v6SG[2] = sg2; v6SG[3] = sg3; v6SG[4] = sg4; v6SG[5] = sg5;
-	//test[0] = 0; test[1] = 0; test[2] = 0; test[3] = 0; test[4] = 0; test[5] = 0;
 	//v6SG[0] = 263; v6SG[1] = -272; v6SG[2] = -137; v6SG[3] = 9; v6SG[4] = 275; v6SG[5] = -258;
-	//SetGaugeOffset(10000,10000,10000,10000,10000,10000);
-	//v6tmp = v6SG - m_v3StrainGaigeOffset;
-	
-	//std::cout<<"\nm_v3StrainGaigeOffset: \n"<< m_v3StrainGaigeOffset <<std::endl;
+
+/*	
+	v6tmp = v6SG - m_v3StrainGaigeOffset;
 	//std::cout<<"\nv6tmp: \n"<< v6tmp <<std::endl;
 	//std::cout<<"\nCalibration Matrix: \n"<<m_mXCalibMatrix<<"\n\n";
 	//std::cout<<"\nCalibration Matrix Transposed: \n"<<m_mXCalibMatrix.transpose()<<"\n\n";
 
-	//test = m_mXCalibMatrix * v6tmp;
+	test = m_mXCalibMatrix * v6tmp;
 	//std::cout << "Test: \n" << test << std::endl;
-	//m_vForceData = test;
-
+	m_vForceData = test;
+*/
 	//std::cout<<"\nCalibration Matrix: \n"<<m_mXCalibMatrix<<"\n\n";
 	//std::cout<<"Calibration Matrix: rows: "<<m_mXCalibMatrix.rows()<<" columns: "<<m_mXCalibMatrix.cols()<<std::endl;
 	test = m_mXCalibMatrix * v6SG;
@@ -381,7 +343,7 @@ void ForceTorqueCtrl::SetGaugeOffset(float sg0Off, float sg1Off, float sg2Off, f
 	Eigen::VectorXf tmp(6);
 	tmp[0] = sg0Off; tmp[1] = sg1Off; tmp[2] = sg2Off; tmp[3] = sg3Off; tmp[4] = sg4Off; tmp[5] = sg5Off; 
 	m_v3StrainGaigeOffset = tmp;
-	std::cout<<"GaugeOffset: \n"<<m_v3StrainGaigeOffset<<"\n";
+	//std::cout<<"GaugeOffset: \n"<<m_v3StrainGaigeOffset<<"\n";
 	//std::cout<<"GaugeOffset 0: \n"<<tmp[0]<<"\n\n";
 }
 void ForceTorqueCtrl::SetGaugeGain(float gg0, float gg1, float gg2, float gg3, float gg4, float gg5)
@@ -440,47 +402,47 @@ void ForceTorqueCtrl::SetTZGain(float tzg0, float tzg1, float tzg2, float tzg3, 
 void ForceTorqueCtrl::CalcCalibMatrix()
 {
 	Eigen::MatrixXf tmp(6, 6);
-	tmp(0) = m_v3FXGain(0)/m_v3GaugeGain(0);
-	tmp(1) = m_v3FXGain(1)/m_v3GaugeGain(1);
-	tmp(2) = m_v3FXGain(2)/m_v3GaugeGain(2);
-	tmp(3) = m_v3FXGain(3)/m_v3GaugeGain(3);
-	tmp(4) = m_v3FXGain(4)/m_v3GaugeGain(4);
-	tmp(5) = m_v3FXGain(5)/m_v3GaugeGain(5);
+	tmp[0] = m_v3FXGain[0]/m_v3GaugeGain[0];
+	tmp[1] = m_v3FXGain[1]/m_v3GaugeGain[1];
+	tmp[2] = m_v3FXGain[2]/m_v3GaugeGain[2];
+	tmp[3] = m_v3FXGain[3]/m_v3GaugeGain[3];
+	tmp[4] = m_v3FXGain[4]/m_v3GaugeGain[4];
+	tmp[5] = m_v3FXGain[5]/m_v3GaugeGain[5];
 
-	tmp(6) = m_v3FYGain(0)/m_v3GaugeGain(0);
-	tmp(7) = m_v3FYGain(1)/m_v3GaugeGain(1);
-	tmp(8) = m_v3FYGain(2)/m_v3GaugeGain(2);
-	tmp(9) = m_v3FYGain(3)/m_v3GaugeGain(3);
-	tmp(10) = m_v3FYGain(4)/m_v3GaugeGain(4);
-	tmp(11) = m_v3FYGain(5)/m_v3GaugeGain(5);
+	tmp[6] = m_v3FYGain[0]/m_v3GaugeGain[0];
+	tmp[7] = m_v3FYGain[1]/m_v3GaugeGain[1];
+	tmp[8] = m_v3FYGain[2]/m_v3GaugeGain[2];
+	tmp[9] = m_v3FYGain[3]/m_v3GaugeGain[3];
+	tmp[10] = m_v3FYGain[4]/m_v3GaugeGain[4];
+	tmp[11] = m_v3FYGain[5]/m_v3GaugeGain[5];
 
-	tmp(12) = m_v3FZGain(0)/m_v3GaugeGain(0);
-	tmp(13) = m_v3FZGain(1)/m_v3GaugeGain(1);
-	tmp(14) = m_v3FZGain(2)/m_v3GaugeGain(2);
-	tmp(15) = m_v3FZGain(3)/m_v3GaugeGain(3);
-	tmp(16) = m_v3FZGain(4)/m_v3GaugeGain(4);
-	tmp(17) = m_v3FZGain(5)/m_v3GaugeGain(5);
+	tmp[12] = m_v3FZGain[0]/m_v3GaugeGain[0];
+	tmp[13] = m_v3FZGain[1]/m_v3GaugeGain[1];
+	tmp[14] = m_v3FZGain[2]/m_v3GaugeGain[2];
+	tmp[15] = m_v3FZGain[3]/m_v3GaugeGain[3];
+	tmp[16] = m_v3FZGain[4]/m_v3GaugeGain[4];
+	tmp[17] = m_v3FZGain[5]/m_v3GaugeGain[5];
 
-	tmp(18) = m_v3TXGain(0)/m_v3GaugeGain(0);
-	tmp(19) = m_v3TXGain(1)/m_v3GaugeGain(1);
-	tmp(20) = m_v3TXGain(2)/m_v3GaugeGain(2);
-	tmp(21) = m_v3TXGain(3)/m_v3GaugeGain(3);
-	tmp(22) = m_v3TXGain(4)/m_v3GaugeGain(4);
-	tmp(23) = m_v3TXGain(5)/m_v3GaugeGain(5);
+	tmp[18] = m_v3TXGain[0]/m_v3GaugeGain[0];
+	tmp[19] = m_v3TXGain[1]/m_v3GaugeGain[1];
+	tmp[20] = m_v3TXGain[2]/m_v3GaugeGain[2];
+	tmp[21] = m_v3TXGain[3]/m_v3GaugeGain[3];
+	tmp[22] = m_v3TXGain[4]/m_v3GaugeGain[4];
+	tmp[23] = m_v3TXGain[5]/m_v3GaugeGain[5];
 
-	tmp(24) = m_v3TYGain(0)/m_v3GaugeGain(0);
-	tmp(25) = m_v3TYGain(1)/m_v3GaugeGain(1);
-	tmp(26) = m_v3TYGain(2)/m_v3GaugeGain(2);
-	tmp(27) = m_v3TYGain(3)/m_v3GaugeGain(3);
-	tmp(28) = m_v3TYGain(4)/m_v3GaugeGain(4);
-	tmp(29) = m_v3TYGain(5)/m_v3GaugeGain(5);
+	tmp[24] = m_v3TYGain[0]/m_v3GaugeGain[0];
+	tmp[25] = m_v3TYGain[1]/m_v3GaugeGain[1];
+	tmp[26] = m_v3TYGain[2]/m_v3GaugeGain[2];
+	tmp[27] = m_v3TYGain[3]/m_v3GaugeGain[3];
+	tmp[28] = m_v3TYGain[4]/m_v3GaugeGain[4];
+	tmp[29] = m_v3TYGain[5]/m_v3GaugeGain[5];
 
-	tmp(30) = m_v3TZGain(0)/m_v3GaugeGain(0);
-	tmp(31) = m_v3TZGain(1)/m_v3GaugeGain(1);
-	tmp(32) = m_v3TZGain(2)/m_v3GaugeGain(2);
-	tmp(33) = m_v3TZGain(3)/m_v3GaugeGain(3);
-	tmp(34) = m_v3TZGain(4)/m_v3GaugeGain(4);
-	tmp(35) = m_v3TZGain(5)/m_v3GaugeGain(5);
+	tmp[30] = m_v3TZGain[0]/m_v3GaugeGain[0];
+	tmp[31] = m_v3TZGain[1]/m_v3GaugeGain[1];
+	tmp[32] = m_v3TZGain[2]/m_v3GaugeGain[2];
+	tmp[33] = m_v3TZGain[3]/m_v3GaugeGain[3];
+	tmp[34] = m_v3TZGain[4]/m_v3GaugeGain[4];
+	tmp[35] = m_v3TZGain[5]/m_v3GaugeGain[5];
 	
 	m_mXCalibMatrix = tmp;
 			
@@ -488,49 +450,49 @@ void ForceTorqueCtrl::CalcCalibMatrix()
 void ForceTorqueCtrl::SetCalibMatrix()
 {
 	Eigen::MatrixXf tmp(6, 6);
-	tmp(0) = m_v3FXGain(0);
-	tmp(1) = m_v3FXGain(1);
-	tmp(2) = m_v3FXGain(2);
-	tmp(3) = m_v3FXGain(3);
-	tmp(4) = m_v3FXGain(4);
-	tmp(5) = m_v3FXGain(5);
+	tmp[0] = m_v3FXGain[0];
+	tmp[1] = m_v3FXGain[1];
+	tmp[2] = m_v3FXGain[2];
+	tmp[3] = m_v3FXGain[3];
+	tmp[4] = m_v3FXGain[4];
+	tmp[5] = m_v3FXGain[5];
 
-	tmp(6) = m_v3FYGain(0);
-	tmp(7) = m_v3FYGain(1);
-	tmp(8) = m_v3FYGain(2);
-	tmp(9) = m_v3FYGain(3);
-	tmp(10) = m_v3FYGain(4);
-	tmp(11) = m_v3FYGain(5);
+	tmp[6] = m_v3FYGain[0];
+	tmp[7] = m_v3FYGain[1];
+	tmp[8] = m_v3FYGain[2];
+	tmp[9] = m_v3FYGain[3];
+	tmp[10] = m_v3FYGain[4];
+	tmp[11] = m_v3FYGain[5];
 
-	tmp(12) = m_v3FZGain(0);
-	tmp(13) = m_v3FZGain(1);
-	tmp(14) = m_v3FZGain(2);
-	tmp(15) = m_v3FZGain(3);
-	tmp(16) = m_v3FZGain(4);
-	tmp(17) = m_v3FZGain(5);
+	tmp[12] = m_v3FZGain[0];
+	tmp[13] = m_v3FZGain[1];
+	tmp[14] = m_v3FZGain[2];
+	tmp[15] = m_v3FZGain[3];
+	tmp[16] = m_v3FZGain[4];
+	tmp[17] = m_v3FZGain[5];
 
-	tmp(18) = m_v3TXGain(0);
-	tmp(19) = m_v3TXGain(1);
-	tmp(20) = m_v3TXGain(2);
-	tmp(21) = m_v3TXGain(3);
-	tmp(22) = m_v3TXGain(4);
-	tmp(23) = m_v3TXGain(5);
+	tmp[18] = m_v3TXGain[0];
+	tmp[19] = m_v3TXGain[1];
+	tmp[20] = m_v3TXGain[2];
+	tmp[21] = m_v3TXGain[3];
+	tmp[22] = m_v3TXGain[4];
+	tmp[23] = m_v3TXGain[5];
 
-	tmp(24) = m_v3TYGain(0);
-	tmp(25) = m_v3TYGain(1);
-	tmp(26) = m_v3TYGain(2);
-	tmp(27) = m_v3TYGain(3);
-	tmp(28) = m_v3TYGain(4);
-	tmp(29) = m_v3TYGain(5);
+	tmp[24] = m_v3TYGain[0];
+	tmp[25] = m_v3TYGain[1];
+	tmp[26] = m_v3TYGain[2];
+	tmp[27] = m_v3TYGain[3];
+	tmp[28] = m_v3TYGain[4];
+	tmp[29] = m_v3TYGain[5];
 
-	tmp(30) = m_v3TZGain(0);
-	tmp(31) = m_v3TZGain(1);
-	tmp(32) = m_v3TZGain(2);
-	tmp(33) = m_v3TZGain(3);
-	tmp(34) = m_v3TZGain(4);
-	tmp(35) = m_v3TZGain(5);
+	tmp[30] = m_v3TZGain[0];
+	tmp[31] = m_v3TZGain[1];
+	tmp[32] = m_v3TZGain[2];
+	tmp[33] = m_v3TZGain[3];
+	tmp[34] = m_v3TZGain[4];
+	tmp[35] = m_v3TZGain[5];
 
-	std::cout << tmp.transpose() << "\n";
+	
 	m_mXCalibMatrix = tmp.transpose();
 			
 }

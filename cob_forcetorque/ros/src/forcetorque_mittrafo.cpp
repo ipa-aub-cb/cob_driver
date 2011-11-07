@@ -56,13 +56,12 @@ typedef unsigned char uint8_t;
 #include <inttypes.h>
 #include <iostream>
 #include <ros/ros.h>
-//#include <std_msgs/Float32MultiArray.h>
-#include <geometry_msgs/WrenchStamped.h>
+#include <std_msgs/Float32MultiArray.h>
 #include <cob_forcetorque/ForceTorqueCtrl.h>
 
 #include <cob_srvs/Trigger.h>
 
-//#include <tf/transform_listener.h>
+#include <tf/transform_listener.h>
 #include <tf/transform_broadcaster.h>
 
 #include <visualization_msgs/Marker.h>
@@ -92,32 +91,30 @@ public:
 private:
   // declaration of topics to publish
   ros::Publisher topicPub_ForceData_;
-  //ros::Publisher topicPub_ForceDataBase_;
+  ros::Publisher topicPub_ForceDataBase_;
   ros::Publisher topicPub_Marker_;
 
   // service servers
   ros::ServiceServer srvServer_Init_;
   ros::ServiceServer srvServer_Calibrate_;
 
-  //tf::TransformListener tflistener;
-  //tf::StampedTransform transform_ee_base;
+  tf::TransformListener tflistener;
+  tf::StampedTransform transform_ee_base;
 
   bool m_isInitialized;
   ForceTorqueCtrl ftc;
   std::vector<double> F_avg;
-  std::vector<double> F_test;
+  
 };
-
 
 bool ForceTorqueNode::init()
 {
   m_isInitialized = false;
-  //topicPub_ForceData_ = nh_.advertise<std_msgs::Float32MultiArray>("/arm_controller/wrench", 100);
-  topicPub_ForceData_ = nh_.advertise<geometry_msgs::WrenchStamped>("/arm_controller/wrench", 100);
-  //topicPub_ForceDataBase_ = nh_.advertise<std_msgs::Float32MultiArray>("/arm_controller/wrench_bl", 100);
+  topicPub_ForceData_ = nh_.advertise<std_msgs::Float32MultiArray>("/arm_controller/wrench1", 100);
+  topicPub_ForceDataBase_ = nh_.advertise<std_msgs::Float32MultiArray>("/arm_controller/wrench_bl1", 100);
   topicPub_Marker_ = nh_.advertise<visualization_msgs::Marker>("/visualization_marker", 1);
-  srvServer_Init_ = nh_.advertiseService("/cob_forcetorque/init", &ForceTorqueNode::srvCallback_Init, this);
-  srvServer_Calibrate_ = nh_.advertiseService("/cob_forcetorque/calibrate", &ForceTorqueNode::srvCallback_Calibrate, this);
+  srvServer_Init_ = nh_.advertiseService("Init", &ForceTorqueNode::srvCallback_Init, this);
+  srvServer_Calibrate_ = nh_.advertiseService("Calibrate", &ForceTorqueNode::srvCallback_Calibrate, this);
 
   
   return true;
@@ -128,26 +125,22 @@ bool ForceTorqueNode::srvCallback_Init(cob_srvs::Trigger::Request &req,
 {
   if(!m_isInitialized)
     {
-	ftc.Init();
-	
 	ftc.SetFXGain(-1674.08485641479, 25.3936432491561, 3936.02718786968, -26695.2539299392, -3463.73728677908, 32320.8777656041);
 	ftc.SetFYGain(-4941.11252317989, 32269.5827812235, 1073.82949467087, -15541.8400780814, 3061.89541712948, -18995.9891819409);
 	ftc.SetFZGain(39553.9250733854, -501.940034213822, 40905.2545309848, 85.1095865539103, 38879.4015426067, 541.344775537753);
-	ftc.SetTXGain(-57.4775857386444, 225.941430274037, -638.238694389357, -116.780649376712, 645.133934885308, -116.310081348745);
+	ftc.SetTXGain(-57.4775857386444, 225.941430274037, -638.238694389357, -116.780649376712, 645.133934885308, -116.310081348745 );
 	ftc.SetTYGain(786.70602313107, -4.36504382717595, -422.360387149734, 180.7428885668, -352.389412256677, -232.293941041101);
 	ftc.SetTZGain(60.1009854270179, -400.19573754971, 29.142908672741, -392.119024237625, 70.9306507180567, -478.104759057292);
 	
 	ftc.SetCalibMatrix();
-	
-	ROS_INFO("FTC initialized");
-	//ROS_INFO("Reading firmware version");
+	ftc.Init();
+	ROS_INFO("FTC initialized888888888888888888888888");
+	ROS_INFO("Reading firmware version");
 	//ftc.ReadFirmwareVersion();
-	//ROS_INFO("Reading calibration matrix");
+	ROS_INFO("Reading calibration matrix");
 	//ftc.ReadCalibrationMatrix();
-	//ftc.SetCalibMatrix();
 	//set Calibdata to zero
 	F_avg.resize(6);
-	F_test.resize(6);
 	F_avg[0] = 0.0;
 	F_avg[1] = 0.0;
 	F_avg[2] = 0.0;
@@ -175,8 +168,7 @@ bool ForceTorqueNode::srvCallback_Calibrate(cob_srvs::Trigger::Request &req,
       F_avg[5] = 0.0;
       for(int i = 0; i < measurements; i++)
 	{
-	  double Fx = 0, Fy = 0, Fz = 0, Tx =0, Ty =0, Tz = 0;
-	  //double Fx, Fy, Fz, Tx, Ty, Tz = 0;
+	  double Fx, Fy, Fz, Tx, Ty, Tz = 0;
 	  ftc.ReadSGData(Fx, Fy, Fz, Tx, Ty, Tz);
 	  F_avg[0] += Fx;
 	  F_avg[1] += Fy;
@@ -198,57 +190,24 @@ void ForceTorqueNode::updateFTData()
 {
   if(m_isInitialized)
     {
-      double Fx = 0, Fy = 0, Fz = 0, Tx =0, Ty =0, Tz = 0;
-      //double Fx, Fy, Fz, Tx, Ty, Tz;
-      /*int test = 10;
-
-	  F_test[0] = 0.0;
-	  F_test[1] = 0.0;
-	  F_test[2] = 0.0;
-	  F_test[3] = 0.0;
-	  F_test[4] = 0.0;
-	  F_test[5] = 0.0;
-	  
-      for(int i = 0; i < test; i++)
-	{
-	  double Fx, Fy, Fz, Tx, Ty, Tz = 0;
-	  ftc.ReadSGData(Fx, Fy, Fz, Tx, Ty, Tz);
-	  F_test[0] += Fx;
-	  F_test[1] += Fy;
-	  F_test[2] += Fz;
-	  F_test[3] += Tx;
-	  F_test[4] += Ty;
-	  F_test[5] += Tz;
-	  usleep(1000);
-	}
-      for(int i = 0; i < 6; i++)
-	  F_test[i] /= test;
-	  geometry_msgs::WrenchStamped msg;
-	  msg.wrench.force.x = F_test[0]-F_avg[0]; //data.push_back(Fx-F_avg[0]);
-      msg.wrench.force.y = F_test[1]-F_avg[1]; //data.push_back(Fy-F_avg[1]);
-      msg.wrench.force.z = F_test[2]-F_avg[2]; //data.push_back(Fz-F_avg[2]);
-      msg.wrench.torque.x = F_test[3]-F_avg[3]; //data.push_back(Tx-F_avg[3]);
-      msg.wrench.torque.y = F_test[4]-F_avg[4]; //data.push_back(Ty-F_avg[4]);
-      msg.wrench.torque.z = F_test[5]-F_avg[5]; //data.push_back(Tz-F_avg[5]);
-    */
-	
+      double Fx, Fy, Fz, Tx, Ty, Tz = 0;
+      
       ftc.ReadSGData(Fx, Fy, Fz, Tx, Ty, Tz);
-      geometry_msgs::WrenchStamped msg;
-      //TODO: define link here based on urdf description
-      //msg.header.frame_id = "ftc";
-      msg.header.stamp = ros::Time::now();
-      msg.wrench.force.x = Fx-F_avg[0]; //data.push_back(Fx-F_avg[0]);
-      msg.wrench.force.y = Fy-F_avg[1]; //data.push_back(Fy-F_avg[1]);
-      msg.wrench.force.z = Fz-F_avg[2]; //data.push_back(Fz-F_avg[2]);
-      msg.wrench.torque.x = Tx-F_avg[3]; //data.push_back(Tx-F_avg[3]);
-      msg.wrench.torque.y = Ty-F_avg[4]; //data.push_back(Ty-F_avg[4]);
-      msg.wrench.torque.z = Tz-F_avg[5]; //data.push_back(Tz-F_avg[5]);
+      std_msgs::Float32MultiArray msg;
+      msg.data.push_back(Fx-F_avg[0]);
+      msg.data.push_back(Fy-F_avg[1]);
+      msg.data.push_back(Fz-F_avg[2]);
+      msg.data.push_back(Tx-F_avg[3]);
+      msg.data.push_back(Ty-F_avg[4]);
+      msg.data.push_back(Tz-F_avg[5]);
+
+
       topicPub_ForceData_.publish(msg);
       
-      /*		tf::Transform transform;
-      		transform.setOrigin( tf::Vector3(0, 0, -0.025) );
+      tf::Transform transform;
+      transform.setOrigin( tf::Vector3(0, 0, -0.025) );
       
-	 	transform.setRotation( tf::createQuaternionFromRPY(3.141592654,0,2.094395102));//30°
+	  transform.setRotation( tf::createQuaternionFromRPY(3.141592654,0,2.094395102));//30°
 	  
 			//transform.setRotation( tf::createQuaternionFromRPY(3.141592654,0,3.665191429));//30° falsch
 			//transform.setRotation( tf::createQuaternionFromRPY(3.141592654,0,5.235987756));//30° + 180° falsch
@@ -262,8 +221,10 @@ void ForceTorqueNode::updateFTData()
 	  br.sendTransform(tf::StampedTransform(transform, ros::Time::now(), "arm_7_link", "ft_debug_link"));
       tf::Transform fdata_base;
       tf::Transform fdata;
-      fdata.setOrigin(tf::Vector3(Fy-F_avg[1], Fx-F_avg[0], Fz-F_avg[2]));
-
+      //fdata.setOrigin(tf::Vector3( Fx-F_avg[0], Fy-F_avg[1], Fz-F_avg[2]));
+	  fdata.setOrigin(tf::Vector3( 0, 0, 10));
+	  fdata.setRotation( tf::createIdentityQuaternion());
+      
       try{
         tflistener.lookupTransform("ft_debug_link", "dummy_link", ros::Time(0), transform_ee_base);
 
@@ -275,17 +236,14 @@ void ForceTorqueNode::updateFTData()
       fdata_base = transform_ee_base * fdata;
 
       std_msgs::Float32MultiArray base_msg;
-      base_msg.data.push_back(fdata_base.getOrigin().y());
       base_msg.data.push_back(fdata_base.getOrigin().x());
+      base_msg.data.push_back(fdata_base.getOrigin().y());
       base_msg.data.push_back(fdata_base.getOrigin().z());
       base_msg.data.push_back(0.0);
       base_msg.data.push_back(0.0);
       base_msg.data.push_back(0.0);
       topicPub_ForceDataBase_.publish(base_msg);
       visualizeData(fdata_base.getOrigin().x(), fdata_base.getOrigin().y(), fdata_base.getOrigin().z());
-      
-     */
-      
     }
 }
 

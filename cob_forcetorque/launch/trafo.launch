@@ -1,0 +1,5 @@
+<launch>
+   <node name="forcetorque_transformation" pkg="cob_forcetorque" type="forcetorque_transformation.py" output="screen"/>
+   
+</launch>
+
