@@ -20,7 +20,8 @@ bool ForceTorqueCtrl::Init()
 void ForceTorqueCtrl::initCan()
 {	
 	std::cout << "initESDCan" << std::endl;
-	m_Can = new CanESD("", false);
+	//m_Can = new CanESD("", false);
+	m_Can = new CanSocket("", false);
 }
 
 void ForceTorqueCtrl::ReadFTSerialNumber()
