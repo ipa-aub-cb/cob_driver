@@ -19,9 +19,13 @@ bool ForceTorqueCtrl::Init()
 
 void ForceTorqueCtrl::initCan()
 {	
-	std::cout << "initESDCan" << std::endl;
+	//std::cout << "initESDCan" << std::endl;
+	std::cout << "initSocketCan" << std::endl;
 	//m_Can = new CanESD("", false);
-	m_Can = new CanSocket("", false);
+	m_Can = new CanSocket("", false, 8);//0x04);
+	std::cout << "initSocketCan___after new command" << std::endl;
+	//CanItf * m_can = new CanSocket();
+	
 }
 
 void ForceTorqueCtrl::ReadFTSerialNumber()
@@ -252,6 +256,7 @@ void ForceTorqueCtrl::ReadSGData(double &Fx, double &Fy, double &Fz, double &Tx,
 
 	CanMsg replyMsg;
 	bool ret2 = m_Can->receiveMsg(&replyMsg);
+	//std::cout<<"received in readsgdata"<< replyMsg.getAt(2) << std::endl;
 	unsigned char c[2];
 	if(ret2)
 	{
@@ -309,7 +314,7 @@ void ForceTorqueCtrl::ReadSGData(double &Fx, double &Fy, double &Fz, double &Tx,
 	else
 		return;
 
-	//std::cout<<"\nsg0: "<<sg0<<" sg1: "<<sg1<<" sg2: "<<sg2<<" sg3: "<<sg3<<" sg4: "<<sg4<<" sg5: "<<sg5<<std::endl;
+	std::cout<<"\nsg0: "<<sg0<<" sg1: "<<sg1<<" sg2: "<<sg2<<" sg3: "<<sg3<<" sg4: "<<sg4<<" sg5: "<<sg5<<std::endl;
 	//out<<"sg0: "<<sg0<<" sg1: "<<sg1<<" sg2: "<<sg2<<" sg3: "<<sg3<<" sg4: "<<sg4<<" sg5: "<<sg5<<std::endl;
 	
 	StrainGaugeToForce(sg0, sg1, sg2, sg3, sg4, sg5);

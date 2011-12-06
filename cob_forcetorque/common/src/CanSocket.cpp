@@ -7,65 +7,63 @@
 //-----------------------------------------------
 //#include "stdafx.h"
 #include <cob_forcetorque/CanSocket.h>
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <sys/ioctl.h>
-#include <net/if.h>
- 
-#include <linux/can.h>
-#include <linux/can/raw.h>
 #include <string.h>
  
-/* At time of writing, these constants are not defined in the headers */
-#ifndef PF_CAN
-#define PF_CAN 29
-#endif
- 
-#ifndef AF_CAN
-#define AF_CAN PF_CAN
-#endif
-
+struct can_frame frame;
 
 //-----------------------------------------------
-CanSocket::CanSocket()//const char* cIniFile, bool bObjectMode)
+CanSocket::CanSocket(const char* cIniFile, bool bObjectMode, int baudrate)
 {
-	//m_bObjectMode = bObjectMode;
-	//m_bIsTXError = false;
+	m_bObjectMode = bObjectMode;
+
+	//std::cout << "ausführung des constructors" << std::endl;
+	m_bIsTXError = false;
+	baudrate = 1;
 	//m_IniFile.SetFileName(cIniFile, "CanSocket.cpp");
-	initIntern();
+	initIntern(baudrate);
 }
 
 //-----------------------------------------------
-/**
+ /*
  * Destructor.
  * Release the allocated resources.
  */
 CanSocket::~CanSocket()
 {
 	std::cout << "Closing CAN handle" << std::endl;
-	canClose(m_Handle);
+	//canClose(m_Handle);
 	//~CanItf();
 }
 
 
 //-----------------------------------------------
-void CanSocket::initIntern()
+void CanSocket::initIntern(int bdrate)
 {	
-	int skt = socket( PF_CAN, SOCK_RAW, CAN_RAW );
- 
-   /* Locate the interface you wish to use */
-   struct ifreq ifr;
-   strcpy(ifr.ifr_name, "can0");
-   ioctl(skt, SIOCGIFINDEX, &ifr); /* ifr.ifr_ifindex gets filled with that device's index */
- 
-   /* Select that CAN interface, and bind the socket to it. */
-   struct sockaddr_can addr;
-   addr.can_family = AF_CAN;
-   addr.can_ifindex = ifr.ifr_ifindex;
-   bind( skt, (struct sockaddr*)&addr, sizeof(addr) );
-
-//	int ret=0;
-/* Does this make any sense as the handle is opened somewhere later?!
+	
+	std::cout << "begin init intern" << std::endl;
+	std::cout << "m_skt is " << m_skt << std::endl;
+	m_skt = socket( PF_CAN, SOCK_RAW, CAN_RAW );
+	//std::cout << "m_skt is " << m_skt << std::endl;
+	/* Locate the interface you wish to use */
+	struct ifreq ifr;
+	//unsigned long* br = (unsigned long*) &ifr.ifr_ifru;
+	//*br = bdrate; 
+	strcpy(ifr.ifr_name, "can0");
+	int ret = ioctl(m_skt, SIOCGIFINDEX, &ifr); /* ifr.ifr_ifindex gets filled with that device's index */
+	//std::cout << "error iocontrol" << ret << std::endl;
+	/* Select that CAN interface, and bind the socket to it. */
+	struct sockaddr_can addr;
+	addr.can_family = AF_CAN;
+	addr.can_ifindex = ifr.ifr_ifindex;
+	std::cout << "ifindex is " << addr.can_ifindex << std::endl;
+	int ret1 = bind( m_skt, (struct sockaddr*)&addr, sizeof(addr) );
+	
+	//ioctl( m_skt, SIOCSCANBAUDRATE, &ifr);
+	
+	//std::cout << "error biniding ret1" << ret1<< std::endl;
+	//std::cout << "m_skt is " << m_skt << std::endl;
+	//	int ret=0;
+	/* Does this make any sense as the handle is opened somewhere later?!
 	//m_Handle = 9;
 	
 	//m_Mutex.lock();
@@ -240,11 +238,29 @@ void CanSocket::initIntern()
  */
 bool CanSocket::transmitMsg(CanMsg CMsg, bool bBlocking)
 {
-	struct can_frame frame;
-   frame.can_id = 0x123;
-   strcpy( frame.data, "foo" );
-   frame.can_dlc = strlen( frame.data );
-   int bytes_sent = write( skt, &frame, sizeof(frame) );
+	//int data[8];
+	int bytes_sent =1;
+	//char data1[8];
+	//struct can_frame frame;
+	frame.can_id = CMsg.m_iID;
+	//std::cout << "frame id is " << frame.can_id << std::endl;
+	
+	for(int i=0; i<8; i++)
+	{
+		//data[i] = CMsg.getAt(i);
+		//data1[i] = char(data[i]);
+		//frame.data += data1[i];
+		frame.data[i] = CMsg.getAt(i);
+		//std::cout << "Msg: " << CMsg.getAt(i) << std::endl;
+	}
+
+	
+	//std::cout << "frame data is " << frame.data << std::endl;
+	frame.can_dlc = CMsg.m_iLen;
+	//strcpy( frame.data, CMsg.data );
+	//std::cout << frame.data;
+	//frame.can_dlc = strlen( frame.data );
+	
 /*
 	CMSG NTCANMsg;
 	NTCANMsg.id = CMsg.m_iID;
@@ -262,35 +278,41 @@ bool CanSocket::transmitMsg(CanMsg CMsg, bool bBlocking)
 	bool bRet = true;
 	
 	len = 1;
-
+*/
+	//std::cout << "m_skt is " << m_skt << std::endl;
+	bool bRet = true;
 	//m_Mutex.lock();
 	if (bBlocking)
-		ret = canWrite(m_Handle, &NTCANMsg, &len,+ NULL);
+		bytes_sent = write( m_skt, &frame, sizeof(frame) );
+		//std::cout << "bblocking bytes sent " << bytes_sent << std::endl;}
 	else
-		ret = canSend(m_Handle, &NTCANMsg, &len);
-
+		bytes_sent = write( m_skt, &frame, sizeof(frame) );
+		//std::cout << "not bblocking bytes sent " << bytes_sent << std::endl;}
 	//m_Mutex.unlock();
 
-	if( ret != NTCAN_SUCCESS)
+	if( bytes_sent < 0)
 	{
-		std::cout << "error in CanSocket::transmitMsg: " << GetErrorStr(ret) << std::endl;
+		std::cout << "error in CanSocket::transmitMsg: " << std::endl;//GetErrorStr(ret) << std::endl;
 		bRet = false;
 	}
 
-	m_LastID = (int)NTCANMsg.data[0];
+	m_LastID = frame.data[0];
 
 	//readEvent();
 
 	//ret auswerten
-	m_bIsTXError = !bRet;
-	return bRet;
-*/
+	if (bytes_sent == 0) 
+		//m_bIsTXError = true;
+	return !m_bIsTXError;
+
+return bRet;
 }
 
 //-----------------------------------------------
 bool CanSocket::receiveMsgRetry(CanMsg* pCMsg, int iNrOfRetry)
 {
-	int id = pCMsg->m_iID;
+	bool bRet = true;
+	/*int id = pCMsg->m_iID;
 	CMSG NTCANMsg;
 	NTCANMsg.len = 8;
 	
@@ -304,8 +326,8 @@ bool CanSocket::receiveMsgRetry(CanMsg* pCMsg, int iNrOfRetry)
 	len = 1;
 	//NTCANMsg.id = pCMsg->m_iID;
 	//ret = canTake(m_Handle, &NTCANMsg, &len);
-	/**/
-	do
+	
+/*	do
 	{
 		len = 1;
 		//m_Mutex.lock();
@@ -318,7 +340,7 @@ bool CanSocket::receiveMsgRetry(CanMsg* pCMsg, int iNrOfRetry)
 	//while((len != 1) && (i < iNrOfRetry));
 	//while((len != 1) && (i < iNrOfRetry));
 	while((len == 0) && (i < iNrOfRetry));
-	/**/
+	
 	
 	//if((i == iNrOfRetry) || (ret != NTCAN_SUCCESS ))
 	if(i == iNrOfRetry)
@@ -343,15 +365,15 @@ bool CanSocket::receiveMsgRetry(CanMsg* pCMsg, int iNrOfRetry)
 	}
 		
 	//readEvent();
-
+*/
 	return bRet;
 }
 
 //-----------------------------------------------
 bool CanSocket::receiveMsg(CanMsg* pCMsg)
 {
-	int bytes_read = read( skt, &frame, sizeof(frame) );
-
+	
+	//std::cout << "receiving" << std::endl;
 	/*CMSG NTCANMsg;
 	NTCANMsg.len = 8;
 
@@ -361,9 +383,22 @@ bool CanSocket::receiveMsg(CanMsg* pCMsg)
 	bool bRet = true;
 	
 	len = 1;
-
+*/
+	bool bRet = true;
 	// Debug valgrind
-	NTCANMsg.data[0] = 0;
+	frame.data[0] = 0;
+	frame.data[1] = 0;
+	frame.data[2] = 0;
+	frame.data[3] = 0;
+	frame.data[4] = 0;
+	frame.data[5] = 0;
+	frame.data[6] = 0;
+	frame.data[7] = 0;
+	//frame.msg_lost = 0;
+	frame.can_id = 0;
+	frame.can_dlc = 0;
+	
+/*	NTCANMsg.data[0] = 0;
 	NTCANMsg.data[1] = 0;
 	NTCANMsg.data[2] = 0;
 	NTCANMsg.data[3] = 0;
@@ -374,47 +409,68 @@ bool CanSocket::receiveMsg(CanMsg* pCMsg)
 	NTCANMsg.msg_lost = 0;
 	NTCANMsg.id = 0;
 	NTCANMsg.len = 0;
-
-	pCMsg->set(0,0,0,0,0,0,0,0);
-
+*/
+	//pCMsg->set(0,0,0,0,0,0,0,0);
+/*
 	
 	if( !isObjectMode() ) {
 		pCMsg->m_iID = 0;
 	} else {
 		NTCANMsg.id = pCMsg->m_iID;
 	}
-
+*/
 	//m_Mutex.lock();
-	ret = canRead(m_Handle, &NTCANMsg, &len, NULL);
+	//ret = canRead(m_Handle, &NTCANMsg, &len, NULL);
 	//m_Mutex.unlock();
+	//std::cout << "&frame is " << &frame << std::endl;
+	//std::cout << "sizeof(frame) is " << sizeof(frame) << std::endl;
+		
+	int bytes_read = read( m_skt, &frame, sizeof(frame) );
+	//int bytes_read = read( m_skt, &frame, sizeof(struct can_frame));
+	//std::cout << "m_skt is " << m_skt << std::endl;
+	//struct ifreq ifr;
+	//struct sockaddr_can addr;
+	//socklen_t len = sizeof(addr);
+	
+ 
+	//int bytes_read = recvfrom(m_skt, &frame, sizeof(struct can_frame), 0, (struct sockaddr*)&addr, &len);
 
-	if( !isObjectMode() ) {
-		if( (len == 1) && (ret == NTCAN_SUCCESS) )
+    /* get interface name of the received CAN frame */
+	//ifr.ifr_ifindex = addr.can_ifindex;
+	//ioctl(m_skt, SIOCGIFNAME, &ifr);
+    //printf("Received a CAN frame from interface %s", ifr.ifr_name);
+	//std::cout << "Received a CAN frame from interface " << ifr.ifr_name << std::endl;
+	//std::cout << "bytes read " << bytes_read << std::endl;
+	//std::cout << "m_skt is " << m_skt << std::endl;
+	//std::cout << "frame is " << frame.data << std::endl;
+
+	if( !isObjectMode() ) 
+	{
+		if (bytes_read > 0) 
 		{
 			// message received
-			pCMsg->m_iID = NTCANMsg.id;
-			pCMsg->m_iLen = NTCANMsg.len;
-			pCMsg->set(NTCANMsg.data[0], NTCANMsg.data[1], NTCANMsg.data[2], NTCANMsg.data[3],
-				NTCANMsg.data[4], NTCANMsg.data[5], NTCANMsg.data[6], NTCANMsg.data[7]);
+			pCMsg->m_iID = frame.can_id;
+			//pCMsg->m_iLen = NTCANMsg.len;
+			pCMsg->set(frame.data[0], frame.data[1], frame.data[2], frame.data[3],
+				frame.data[4], frame.data[5], frame.data[6], frame.data[7]);
 			bRet = true;
 		}
 		else
 		{
 			// no message
-			if( ret != NTCAN_SUCCESS)
-			{
-				// error
-				std::cout << "error in CanSocket::receiveMsg: " << GetErrorStr(ret) << std::endl;
-			}
-	
-			pCMsg->m_iID = NTCANMsg.id;
+			// error
+			std::cout << "error in CanSocket::receiveMsg: " << std::endl;//GetErrorStr(ret) << std::endl;
+				
+			pCMsg->m_iID = frame.can_id;
 			pCMsg->set(0,0,0,0,0,0,0,0);
 	
 //			std::cout << "len=" << len << "; ret = " << GetErrorStr(ret) << std::endl;
 			bRet = false;
 		}
-	} else {
-		//std::cout << "ID=" << NTCANMsg.id << "; len=" << (int)len << std::endl;
+	}
+	else 
+	{
+		/*//std::cout << "ID=" << NTCANMsg.id << "; len=" << (int)len << std::endl;
 		if( len == 16 ) {
 			// No message was received yet.
 			pCMsg->m_iID = NTCANMsg.id;
@@ -426,11 +482,32 @@ bool CanSocket::receiveMsg(CanMsg* pCMsg)
 			pCMsg->set(NTCANMsg.data[0], NTCANMsg.data[1], NTCANMsg.data[2], NTCANMsg.data[3],
 				   NTCANMsg.data[4], NTCANMsg.data[5], NTCANMsg.data[6], NTCANMsg.data[7]);
 			bRet = true;
+		}*/
+		if (bytes_read > 0) 
+		{
+			// message received
+			pCMsg->m_iID = frame.can_id;
+			//pCMsg->m_iLen = NTCANMsg.len;
+			pCMsg->set(frame.data[0], frame.data[1], frame.data[2], frame.data[3],
+				frame.data[4], frame.data[5], frame.data[6], frame.data[7]);
+			bRet = true;
+		}
+		else
+		{
+			// no message
+			// error
+			std::cout << "error in CanSocket::receiveMsg: " << std::endl;//GetErrorStr(ret) << std::endl;
+				
+			pCMsg->m_iID = frame.can_id;
+			pCMsg->set(0,0,0,0,0,0,0,0);
+	
+//			std::cout << "len=" << len << "; ret = " << GetErrorStr(ret) << std::endl;
+			bRet = false;
 		}
 	}
 	
-	if( NTCANMsg.msg_lost != 0 )
-		std::cout << (int)(NTCANMsg.msg_lost) << " messages lost!" << std::endl;
+	//if( frame.msg_lost != 0 )
+	//	std::cout << (int)(NTCANMsg.msg_lost) << " messages lost!" << std::endl;
 
 	//readEvent();
 	/*
@@ -455,7 +532,7 @@ bool CanSocket::receiveMsg(CanMsg* pCMsg)
  * @param handle The handle to add the identifiers to.
  * @param id The command id sent to the RCS5000.
  * @return NTCAN_SUCESS if ok, or an error code.
- */
+
 int CanSocket::canIdAddGroup(HANDLE handle, int id)
 {
 	int result = NTCAN_SUCCESS;
@@ -476,9 +553,9 @@ int CanSocket::canIdAddGroup(HANDLE handle, int id)
 
 	return result;
 }
-
+ */
 //-----------------------------------------------
-std::string CanSocket::GetErrorStr(int ntstatus) const
+/*std::string CanSocket::GetErrorStr(int ntstatus) const
 {
 	switch (ntstatus)
 	{
@@ -512,7 +589,7 @@ std::string CanSocket::GetErrorStr(int ntstatus) const
 	sprintf(msg, "unknown error code %d", ntstatus);
 	return msg;
 }
-
+*/
 /**
  * Check if errors occured on the CAN bus.
  * @return 	- 0 if everthing is fine.
@@ -521,7 +598,7 @@ std::string CanSocket::GetErrorStr(int ntstatus) const
  *		- -5 if a FIFO overflow occured.
  *		- -6 if the CAN controller is BUS OFF.
  *		- -7 if the CAN controller is WARN, i.e. error passive.
- */
+
 int CanSocket::readEvent()
 {
 	EVMSG evmsg;
@@ -559,4 +636,4 @@ int CanSocket::readEvent()
 	}
 	return iRet;
 }
-
+ */

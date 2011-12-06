@@ -141,9 +141,10 @@ bool ForceTorqueNode::srvCallback_Init(cob_srvs::Trigger::Request &req,
 	
 	ROS_INFO("FTC initialized");
 	//ROS_INFO("Reading firmware version");
-	//ftc.ReadFirmwareVersion();
+	ftc.ReadFirmwareVersion();
+	ftc.ReadFTSerialNumber();
 	//ROS_INFO("Reading calibration matrix");
-	//ftc.ReadCalibrationMatrix();
+	ftc.ReadCalibrationMatrix();
 	//ftc.SetCalibMatrix();
 	//set Calibdata to zero
 	F_avg.resize(6);
