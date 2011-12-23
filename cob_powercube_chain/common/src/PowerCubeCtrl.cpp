@@ -249,7 +249,7 @@ bool PowerCubeCtrl::Init(PowerCubeCtrlParams * params)
     PCube_setHomeOffset(m_DeviceHandle, ModulIDs[i], Offsets[i]);
     pthread_mutex_unlock(&m_mutex);
   }
-
+	
   // Set limits to hardware
   for (int i = 0; i < DOF; i++)
   {
