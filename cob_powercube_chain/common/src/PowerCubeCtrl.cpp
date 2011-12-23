@@ -58,7 +58,6 @@
  ****************************************************************/
 
 #include <cob_powercube_chain/PowerCubeCtrl.h>
-<<<<<<< HEAD
 //FOR DEBUG
 #include <ros/ros.h>
 
@@ -725,11 +724,6 @@ bool PowerCubeCtrl::updateStates()
     m_status[i] = state;
     m_dios[i] = dio;
     m_positions[i] = position;
-<<<<<<< HEAD
-	m_control_positions[i] = position;
-
-=======
->>>>>>> 398b7f320cfd85f46127fa3b23df8b3324c980a3
     
     // @todo calculate vel and acc
     //m_velocities = ???;

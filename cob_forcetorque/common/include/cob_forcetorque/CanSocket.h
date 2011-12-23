@@ -28,7 +28,6 @@
 #include <linux/can/raw.h>
 #include <string.h>
  
-/* At time of writing, these constants are not defined in the headers */
 #ifndef PF_CAN
 #define PF_CAN 29
 #endif
@@ -41,13 +40,10 @@
 #define CANSOCKET_INCLUDEDEF_H
 
 //-----------------------------------------------
-//#include <windows.h>
 #include <iostream>
 #include <cstdio>
 #include <errno.h>
 #include <cob_forcetorque/CanItf.h>
-//#include <libntcan/ntcan.h>
-//#include <Neobotix/Utilities/IniFile.h>
 #include <cob_forcetorque/Mutex.h>
 
 //-----------------------------------------------
@@ -66,11 +62,11 @@ private:
 	bool m_bIsTXError;
 	Mutex m_Mutex;
 	int m_skt;
-	//IniFile m_IniFile;
 	void initIntern(int bdrate);
+	
 
 public:
-	CanSocket(const char* cIniFile, bool bObjectMode = false, int baudrate = 0);//0x04);
+	CanSocket(const char* cIniFile, bool bObjectMode = false, int baudrate = 0);
 	~CanSocket();
 	void init(){};
 	bool transmitMsg(CanMsg CMsg, bool bBlocking = true);
@@ -80,15 +76,7 @@ public:
 	bool isTransmitError() { return m_bIsTXError; }
 protected:
 
-    /*!
-        \fn CanESD::invert(int id)
-     */
-	/**
-	 * Invert a give ID in 1-complement.
-	 * <b>Note:</b> Only 11 bits are used, i.e. the range is from 0x00 to 0x7FF.
-	 * @param id The id to be inverted.
-	 * @return The inverted id.
-	 */
+    
 	int invert(int id)
 	{
 	//return (~id) & 0x7FF;
